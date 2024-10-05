@@ -82,6 +82,41 @@ export const POST = async (request: NextRequest) => {
 
   // Coding in lecture
 
+  const prisma = getPrisma();
+
+  // get courses but no title
+  const enrollments = await prisma.enrollment.findMany({
+    where: { studentId: studentId },
+    include: { course: true },
+  });
+
+  //check if courses does not exist
+  const course = await prisma.course.findMany({
+    where: { courseNo },
+  });
+  const findCourse = course.find((c) => c.courseNo === courseNo);
+  if (!findCourse) {
+    return NextResponse.json({
+    ok: false,
+    message: "Course number does not exist",
+    },
+    { status: 400 }
+  );}
+
+  // check if already enrolled
+  const isEnrolled = enrollments.find((enrollment) => enrollment.courseNo === courseNo);
+  if (isEnrolled) {
+    return NextResponse.json({
+    ok: false,
+    message: "You already registered this course",
+    },
+    { status: 400 }
+  );}
+
+  await prisma.enrollment.create({
+    data:{studentId: studentId, courseNo: courseNo},
+  });
+
   return NextResponse.json({
     ok: true,
     message: "You has enrolled a course successfully",
@@ -126,6 +161,21 @@ export const DELETE = async (request: NextRequest) => {
   }
 
   const prisma = getPrisma();
+    // get courses but no title
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId: studentId },
+      include: { course: true },
+    });
+
+  const isEnrolled = enrollments.find((enrollment) => enrollment.courseNo === courseNo);
+  if (!isEnrolled) {
+    return NextResponse.json({
+    ok: false,
+    message: "You cannot drop from this course. You have not enrolled it yet!",
+    },
+    { status: 400 }
+  );}
+  
   // Perform data delete
 
   return NextResponse.json({
